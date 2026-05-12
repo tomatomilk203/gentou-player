@@ -1,0 +1,1452 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#5c4a3a">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>幻燈 Player</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f2ece0;
+      --panel: #faf7f0;
+      --ink: #3d3229;
+      --muted: #97907e;
+      --line: #e0d8c8;
+      --accent: #5c4a3a;
+      --accent-ink: #faf7f0;
+      --paper: #eee8da;
+      --soft: #ddd5c4;
+      --serif: ui-serif, "Yu Mincho", "Hiragino Mincho ProN", Georgia, serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+
+    body {
+      min-height: 100dvh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 300;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    button, input { font: inherit; }
+
+    .app {
+      width: 100%;
+      min-height: 100dvh;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      grid-template-rows: 100dvh;
+      background: var(--line);
+    }
+
+    .player,
+    .queue {
+      background: var(--panel);
+    }
+
+    .player {
+      height: 100dvh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--line);
+    }
+
+    /* ── Brand ── */
+
+    .brand {
+      padding: 28px 28px 24px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-size: 20px;
+      font-weight: 400;
+      line-height: 1.2;
+      letter-spacing: .08em;
+    }
+
+    .sub {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .04em;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 3px 8px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: .03em;
+    }
+
+    /* ── Art ── */
+
+    .art-area {
+      padding: 40px 28px 36px;
+      text-align: center;
+      border-top: 1px solid var(--line);
+    }
+
+    .art-chars {
+      font-family: var(--serif);
+      font-size: 48px;
+      font-weight: 400;
+      letter-spacing: .3em;
+      line-height: 1;
+      color: var(--ink);
+    }
+
+    .art-line {
+      display: block;
+      width: 24px;
+      height: 0;
+      border: none;
+      border-top: 1px solid var(--muted);
+      margin: 18px auto 14px;
+    }
+
+    .art-label {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    /* ── Now Playing ── */
+
+    .now {
+      padding: 24px 28px 20px;
+      border-top: 1px solid var(--line);
+      min-height: 60px;
+    }
+
+    .track-title {
+      font-family: var(--serif);
+      font-size: 18px;
+      font-weight: 400;
+      line-height: 1.4;
+      letter-spacing: .02em;
+      overflow-wrap: anywhere;
+    }
+
+    .track-meta {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Progress ── */
+
+    .progress-wrap {
+      padding: 0 28px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .time {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .02em;
+    }
+
+    /* ── Range inputs ── */
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 1px;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      background: linear-gradient(
+        to right,
+        var(--ink) 0,
+        var(--ink) calc(var(--fill, 0) * 1%),
+        var(--soft) calc(var(--fill, 0) * 1%),
+        var(--soft) 100%
+      );
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--ink);
+      border: none;
+      cursor: pointer;
+      transition: transform .15s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.3);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--ink);
+      border: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-track {
+      height: 1px;
+      background: transparent;
+    }
+
+    /* ── Controls ── */
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+      padding: 20px 28px 0;
+    }
+
+    .icon-button {
+      width: 46px;
+      height: 46px;
+      border: none;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 50%;
+      transition: background .12s ease, color .12s ease;
+    }
+
+    .icon-button:hover {
+      background: var(--paper);
+    }
+
+    .icon-button:active {
+      background: var(--soft);
+    }
+
+    .icon-button.active {
+      background: var(--accent);
+      color: var(--accent-ink);
+    }
+
+    .play {
+      width: 56px;
+      height: 56px;
+      background: var(--accent);
+      color: var(--accent-ink);
+    }
+
+    .play:hover {
+      opacity: .85;
+      background: var(--accent);
+    }
+
+    .icon {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .play .icon {
+      width: 22px;
+      height: 22px;
+    }
+
+    /* ── Settings ── */
+
+    .settings {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      padding: 20px 28px 0;
+    }
+
+    .setting {
+      display: grid;
+      gap: 6px;
+    }
+
+    .setting-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .setting-head label {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .03em;
+    }
+
+    .setting-value {
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+    }
+
+    /* ── File loaders ── */
+
+    .loaders {
+      padding: 24px 28px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .text-button {
+      flex: 1;
+      min-width: 120px;
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: .02em;
+      cursor: pointer;
+      text-align: center;
+      display: inline-grid;
+      place-items: center;
+      transition: background .12s ease, border-color .12s ease;
+    }
+
+    .text-button:hover {
+      background: var(--paper);
+      border-color: var(--muted);
+    }
+
+    .text-button:active {
+      background: var(--soft);
+    }
+
+    .text-button.span-full {
+      flex-basis: 100%;
+    }
+
+    .status {
+      padding: 10px 28px 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.6;
+      min-height: 18px;
+    }
+
+    .drop-zone {
+      margin: 12px 28px 28px;
+      padding: 16px;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      font-size: 11px;
+      text-align: center;
+      letter-spacing: .02em;
+      transition: border-color .12s ease, background .12s ease;
+    }
+
+    .drop-zone.dragging {
+      border-color: var(--ink);
+      background: var(--paper);
+    }
+
+    .hidden-input {
+      position: fixed;
+      inset: auto auto 0 0;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ── Queue ── */
+
+    .queue {
+      height: 100dvh;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+    }
+
+    .queue-head {
+      padding: 24px 24px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .queue-head h2 {
+      font-family: var(--serif);
+      font-size: 14px;
+      font-weight: 400;
+      letter-spacing: .06em;
+      margin-right: auto;
+    }
+
+    .queue-count {
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .playlist-modes {
+      width: 100%;
+      display: flex;
+      gap: 0;
+    }
+
+    .mode-button {
+      flex: 1;
+      min-height: 34px;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      margin-left: -1px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .02em;
+      cursor: pointer;
+      transition: background .1s ease, color .1s ease;
+    }
+
+    .mode-button:first-child { margin-left: 0; }
+
+    .mode-button:hover {
+      color: var(--ink);
+    }
+
+    .mode-button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-ink);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Tracks ── */
+
+    .tracks {
+      padding: 0;
+      margin: 0;
+      list-style: none;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .track {
+      width: 100%;
+      min-height: 52px;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      text-align: left;
+      padding: 10px 24px;
+      border-top: 1px solid var(--line);
+      transition: background .1s ease;
+    }
+
+    .track:hover {
+      background: var(--paper);
+    }
+
+    .track.current {
+      background: var(--accent);
+      color: var(--accent-ink);
+    }
+
+    .track.current .track-no,
+    .track.current .track-file {
+      color: inherit;
+      opacity: .6;
+    }
+
+    .track-no {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .track-name {
+      display: block;
+      font-size: 13px;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+
+    .track-file {
+      display: block;
+      margin-top: 1px;
+      color: var(--muted);
+      font-size: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── PC (wide) ── */
+
+    @media (min-width: 821px) {
+      .app {
+        grid-template-columns: 420px 1fr;
+      }
+
+      .brand {
+        padding: 36px 36px 28px;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+
+      .sub {
+        font-size: 13px;
+        margin-top: 10px;
+      }
+
+      .badge {
+        font-size: 12px;
+        padding: 4px 12px;
+        margin-top: 12px;
+      }
+
+      .art-area {
+        padding: 48px 36px 44px;
+      }
+
+      .art-chars {
+        font-size: 64px;
+      }
+
+      .art-line {
+        width: 32px;
+        margin: 22px auto 18px;
+      }
+
+      .art-label {
+        font-size: 12px;
+      }
+
+      .now {
+        padding: 28px 36px 24px;
+      }
+
+      .track-title {
+        font-size: 22px;
+      }
+
+      .track-meta {
+        font-size: 14px;
+        margin-top: 6px;
+      }
+
+      .progress-wrap {
+        padding: 0 36px;
+        gap: 8px;
+      }
+
+      .time {
+        font-size: 13px;
+      }
+
+      input[type="range"] {
+        height: 2px;
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        width: 16px;
+        height: 16px;
+      }
+
+      input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+      }
+
+      .controls {
+        gap: 8px;
+        padding: 24px 36px 0;
+      }
+
+      .icon-button {
+        width: 54px;
+        height: 54px;
+      }
+
+      .play {
+        width: 64px;
+        height: 64px;
+      }
+
+      .icon {
+        width: 24px;
+        height: 24px;
+      }
+
+      .play .icon {
+        width: 28px;
+        height: 28px;
+      }
+
+      .settings {
+        gap: 20px;
+        padding: 24px 36px 0;
+      }
+
+      .setting-head label {
+        font-size: 13px;
+      }
+
+      .setting-value {
+        font-size: 13px;
+      }
+
+      .loaders {
+        padding: 28px 36px 0;
+        gap: 10px;
+      }
+
+      .text-button {
+        min-height: 44px;
+        font-size: 14px;
+        padding: 0 18px;
+      }
+
+      .status {
+        padding: 12px 36px 0;
+        font-size: 13px;
+      }
+
+      .drop-zone {
+        margin: 14px 36px 36px;
+        padding: 20px;
+        font-size: 13px;
+      }
+
+      .queue-head {
+        padding: 28px 32px 20px;
+        gap: 14px;
+      }
+
+      .queue-head h2 {
+        font-size: 18px;
+      }
+
+      .queue-count {
+        font-size: 14px;
+      }
+
+      .mode-button {
+        min-height: 40px;
+        font-size: 13px;
+        padding: 0 12px;
+      }
+
+      .track {
+        min-height: 60px;
+        grid-template-columns: 44px minmax(0, 1fr);
+        gap: 12px;
+        padding: 14px 32px;
+      }
+
+      .track-no {
+        font-size: 14px;
+      }
+
+      .track-name {
+        font-size: 16px;
+      }
+
+      .track-file {
+        font-size: 12px;
+        margin-top: 2px;
+      }
+    }
+
+    /* ── Mobile ── */
+
+    @media (max-width: 820px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+      }
+
+      .player {
+        height: auto;
+        overflow-y: visible;
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .art-area {
+        padding: 28px 24px 24px;
+      }
+
+      .art-chars {
+        font-size: 36px;
+      }
+
+      .queue {
+        height: auto;
+        max-height: none;
+        overflow: visible;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .brand {
+        padding: 20px 20px 16px;
+      }
+
+      h1 { font-size: 18px; }
+
+      .art-area {
+        padding: 24px 20px 20px;
+      }
+
+      .art-chars {
+        font-size: 30px;
+      }
+
+      .now {
+        padding: 20px 20px 16px;
+      }
+
+      .track-title { font-size: 16px; }
+
+      .progress-wrap,
+      .controls,
+      .settings {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+
+      .loaders {
+        padding: 20px 20px 0;
+        flex-direction: column;
+      }
+
+      .text-button { min-width: 0; }
+
+      .status {
+        padding: 8px 20px 0;
+      }
+
+      .drop-zone {
+        margin: 10px 20px 20px;
+      }
+
+      .queue-head {
+        padding: 20px 20px 14px;
+      }
+
+      .playlist-modes {
+        flex-direction: column;
+        gap: 0;
+      }
+
+      .mode-button {
+        margin-left: 0;
+        margin-top: -1px;
+      }
+
+      .mode-button:first-child { margin-top: 0; }
+
+      .track {
+        padding: 10px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="player" aria-label="プレイヤー">
+      <div class="brand">
+        <h1>幻燈 Local Player</h1>
+        <p class="sub">unofficial / owned files only</p>
+        <span class="badge" id="modeBadge">Local WAV</span>
+      </div>
+
+      <div class="art-area" aria-hidden="true">
+        <div class="art-chars">幻燈</div>
+        <hr class="art-line">
+        <div class="art-label">Local Player</div>
+      </div>
+
+      <div class="now" aria-live="polite">
+        <h2 class="track-title" id="title">夏の肖像</h2>
+        <p class="track-meta" id="meta">1 / 15</p>
+      </div>
+
+      <div class="progress-wrap">
+        <input id="seek" type="range" min="0" max="1000" value="0" aria-label="再生位置">
+        <div class="time">
+          <span id="elapsed">0:00</span>
+          <span id="duration">0:00</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="icon-button" id="shuffle" type="button" title="シャッフル" aria-label="シャッフル">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+        </button>
+        <button class="icon-button" id="prev" type="button" title="前の曲" aria-label="前の曲">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 20 9 12l10-8v16z"/><path d="M5 19V5"/></svg>
+        </button>
+        <button class="icon-button play" id="play" type="button" title="再生 / 一時停止" aria-label="再生">
+          <svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button class="icon-button" id="next" type="button" title="次の曲" aria-label="次の曲">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 4 10 8-10 8V4z"/><path d="M19 5v14"/></svg>
+        </button>
+        <button class="icon-button" id="repeat" type="button" title="リピート" aria-label="リピート">
+          <svg class="icon icon-repeat" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>
+        </button>
+      </div>
+
+      <div class="settings">
+        <div class="setting">
+          <div class="setting-head"><label for="volume">音量</label><span class="setting-value" id="volumeValue">85%</span></div>
+          <input id="volume" type="range" min="0" max="1" step="0.01" value="0.85">
+        </div>
+        <div class="setting">
+          <div class="setting-head"><label for="speed">速度</label><span class="setting-value" id="speedValue">1.00x</span></div>
+          <input id="speed" type="range" min="0.75" max="1.25" step="0.05" value="1">
+        </div>
+      </div>
+
+      <div class="loaders">
+        <button class="text-button" id="chooseFiles" type="button">音源ファイルを選ぶ</button>
+        <button class="text-button" id="chooseFolder" type="button">音源フォルダを選ぶ</button>
+        <button class="text-button span-full" id="reloadSaved" type="button">前回の場所を読む</button>
+      </div>
+      <p class="status" id="status">初回表示後はアプリ本体をオフラインで開けます。スマホでは端末内の音源ファイルを複数選択してください。</p>
+      <div class="drop-zone" id="dropZone">音源ファイルをここにドラッグ&ドロップ</div>
+
+      <input class="hidden-input" id="fileInput" type="file" accept="audio/*,.wav" multiple>
+      <input class="hidden-input" id="folderInput" type="file" accept="audio/*,.wav" multiple webkitdirectory>
+      <audio id="audio" preload="metadata" playsinline></audio>
+    </section>
+
+    <section class="queue" aria-label="曲一覧">
+      <div class="queue-head">
+        <h2>曲一覧</h2>
+        <span class="queue-count" id="queueCount">15曲</span>
+        <div class="playlist-modes" aria-label="プレイリスト切替">
+          <button class="mode-button" type="button" data-mode="limited">幻燈限定</button>
+          <button class="mode-button" type="button" data-mode="chapter2">第二章</button>
+          <button class="mode-button" type="button" data-mode="instrumental">インスト</button>
+        </div>
+      </div>
+      <ol class="tracks" id="tracks"></ol>
+    </section>
+  </main>
+
+  <script>
+    const gentouCatalog = [
+      { no: 1, title: "夏の肖像", file: "1_NatsunoShouzou.wav", aliases: ["natsunoshouzou", "natsunoshouzo", "natsunoshozou", "natsunoshozo", "夏の肖像"] },
+      { no: 2, title: "都落ち", file: "2_Miyakoochi.wav", aliases: ["miyakoochi", "miyakochi", "都落ち"] },
+      { no: 3, title: "ブレーメン", file: "3_Bremen.wav", aliases: ["bremen", "ブレーメン"] },
+      { no: 4, title: "チノカテ", file: "4_Chinokate.wav", aliases: ["chinokate", "チノカテ"] },
+      { no: 5, title: "雪国", file: "5_Yukiguni.wav", aliases: ["yukiguni", "雪国"] },
+      { no: 6, title: "月に吠える", file: "6_TsukiniHoeru.wav", aliases: ["tsukinihoeru", "月に吠える"] },
+      { no: 7, title: "451", file: "7_451.wav", aliases: ["451"] },
+      { no: 8, title: "パドドゥ", file: "8_Pasdedeux.wav", aliases: ["pasdedeux", "pas de deux", "パドドゥ"] },
+      { no: 9, title: "又三郎", file: "9_Matasaburo.wav", aliases: ["matasaburo", "matasaburou", "又三郎"] },
+      { no: 10, title: "靴の花火 - Re-Recording -", file: "10_KutsunoHanabi-Re-Recording-.wav", aliases: ["kutsunohanabi", "kutsunohanabirerecording", "靴の花火"] },
+      { no: 11, title: "老人と海", file: "11_RoujintoUmi.wav", aliases: ["roujintoumi", "roujintoumi", "rojintoumi", "老人と海"] },
+      { no: 12, title: "さよならモルテン", file: "12_SayonaraMolten.wav", aliases: ["sayonaramolten", "さよならモルテン"] },
+      { no: 13, title: "いさな", file: "13_Isana.wav", aliases: ["isana", "いさな"] },
+      { no: 14, title: "左右盲", file: "14_Sayuumou.wav", aliases: ["sayuumou", "sayumo", "sayumou", "左右盲"] },
+      { no: 15, title: "アルジャーノン", file: "15_Algernon.wav", aliases: ["algernon", "アルジャーノン"] },
+      { no: 16, title: "第一夜", file: "16_Daiichiya.wav", aliases: ["daiichiya", "dai1ya", "第一夜"] },
+      { no: 17, title: "第二夜", file: "17_Dainiya.wav", aliases: ["dainiya", "dai2ya", "第二夜"] },
+      { no: 18, title: "第三夜", file: "18_Daisanya.wav", aliases: ["daisanya", "dai3ya", "第三夜"] },
+      { no: 19, title: "第四夜", file: "19_Daiyonya.wav", aliases: ["daiyonya", "dai4ya", "第四夜"] },
+      { no: 20, title: "第五夜", file: "20_Daigoya.wav", aliases: ["daigoya", "dai5ya", "第五夜"] },
+      { no: 21, title: "第六夜", file: "21_Dairokuya.wav", aliases: ["dairokuya", "dai6ya", "第六夜"] },
+      { no: 22, title: "第七夜", file: "22_Dainanaya.wav", aliases: ["dainanaya", "dai7ya", "第七夜"] },
+      { no: 23, title: "第八夜", file: "23_Daihachiya.wav", aliases: ["daihachiya", "dai8ya", "第八夜"] },
+      { no: 24, title: "第九夜", file: "24_Daikyuya.wav", aliases: ["daikyuya", "dai9ya", "第九夜"] },
+      { no: 25, title: "第十夜", file: "25_Daijuya.wav", aliases: ["daijuya", "dai10ya", "第十夜"] }
+    ];
+
+    const playlistModes = {
+      all: {
+        label: "全曲",
+        numbers: gentouCatalog.map(t => t.no)
+      },
+      limited: {
+        label: "幻燈限定",
+        numbers: [1, 5, 8, 10, 12, 13]
+      },
+      chapter2: {
+        label: "第二章",
+        numbers: [16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+      },
+      instrumental: {
+        label: "インスト",
+        numbers: [17, 18, 19, 20, 21, 22, 23, 24, 25]
+      }
+    };
+
+    const defaultTracks = gentouCatalog.map(track => ({
+      ...track,
+      src: track.file,
+      index: track.no - 1,
+      matchedName: track.file
+    }));
+
+    const audio = document.querySelector("#audio");
+    const titleEl = document.querySelector("#title");
+    const metaEl = document.querySelector("#meta");
+    const seek = document.querySelector("#seek");
+    const elapsedEl = document.querySelector("#elapsed");
+    const durationEl = document.querySelector("#duration");
+    const playButton = document.querySelector("#play");
+    const prevButton = document.querySelector("#prev");
+    const nextButton = document.querySelector("#next");
+    const shuffleButton = document.querySelector("#shuffle");
+    const repeatButton = document.querySelector("#repeat");
+    const volume = document.querySelector("#volume");
+    const speed = document.querySelector("#speed");
+    const volumeValue = document.querySelector("#volumeValue");
+    const speedValue = document.querySelector("#speedValue");
+    const tracksEl = document.querySelector("#tracks");
+    const queueCount = document.querySelector("#queueCount");
+    const modeBadge = document.querySelector("#modeBadge");
+    const fileInput = document.querySelector("#fileInput");
+    const folderInput = document.querySelector("#folderInput");
+    const statusEl = document.querySelector("#status");
+    const dropZone = document.querySelector("#dropZone");
+    const reloadSavedButton = document.querySelector("#reloadSaved");
+    const modeButtons = document.querySelectorAll(".mode-button");
+
+    const state = {
+      library: defaultTracks,
+      tracks: [],
+      playlistMode: localStorage.getItem("gentou.playlistMode") || "all",
+      current: Number(localStorage.getItem("gentou.current") || 0),
+      shuffle: localStorage.getItem("gentou.shuffle") === "true",
+      repeat: localStorage.getItem("gentou.repeat") || "off",
+      history: []
+    };
+
+    audio.volume = Number(localStorage.getItem("gentou.volume") || 0.85);
+    volume.value = audio.volume;
+
+    const icons = {
+      play: '<svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
+      pause: '<svg class="icon icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14"/><path d="M16 5v14"/></svg>',
+      repeat: '<svg class="icon icon-repeat" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>',
+      repeatOne: '<span style="position:relative;display:grid;place-items:center"><svg class="icon icon-repeat" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg><span style="position:absolute;font-size:10px;font-weight:700;line-height:1">1</span></span>'
+    };
+
+    function formatTime(value) {
+      if (!Number.isFinite(value)) return "0:00";
+      const minutes = Math.floor(value / 60);
+      const seconds = Math.floor(value % 60).toString().padStart(2, "0");
+      return `${minutes}:${seconds}`;
+    }
+
+    function saveState() {
+      localStorage.setItem("gentou.current", String(state.current));
+      localStorage.setItem("gentou.shuffle", String(state.shuffle));
+      localStorage.setItem("gentou.repeat", state.repeat);
+      localStorage.setItem("gentou.volume", String(audio.volume));
+      localStorage.setItem("gentou.playlistMode", state.playlistMode);
+    }
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    function updateRangeFill(el) {
+      const min = Number(el.min) || 0;
+      const max = Number(el.max) || 1;
+      const val = Number(el.value) || 0;
+      const pct = ((val - min) / (max - min)) * 100;
+      el.style.setProperty("--fill", pct);
+    }
+
+    function updateAllRanges() {
+      updateRangeFill(seek);
+      updateRangeFill(volume);
+      updateRangeFill(speed);
+    }
+
+    function openHandleDb() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open("gentou-player", 1);
+        request.onupgradeneeded = () => request.result.createObjectStore("handles");
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function saveDirectoryHandle(handle) {
+      if (!("indexedDB" in window)) return;
+      const db = await openHandleDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction("handles", "readwrite");
+        tx.objectStore("handles").put(handle, "lastDirectory");
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+    }
+
+    async function loadDirectoryHandle() {
+      if (!("indexedDB" in window)) return null;
+      const db = await openHandleDb();
+      const handle = await new Promise((resolve, reject) => {
+        const tx = db.transaction("handles", "readonly");
+        const request = tx.objectStore("handles").get("lastDirectory");
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error);
+      });
+      db.close();
+      return handle;
+    }
+
+    async function verifyDirectoryPermission(handle) {
+      if (!handle || !("queryPermission" in handle)) return false;
+      const options = { mode: "read" };
+      if ((await handle.queryPermission(options)) === "granted") return true;
+      if (!("requestPermission" in handle)) return false;
+      return (await handle.requestPermission(options)) === "granted";
+    }
+
+    function normalizeName(value) {
+      return value
+        .normalize("NFKC")
+        .toLowerCase()
+        .replace(/\.[a-z0-9]+$/i, "")
+        .replace(/re[\s_-]*recording/g, "rerecording")
+        .replace(/[^0-9a-z぀-ヿ㐀-鿿]/g, "");
+    }
+
+    function matchGentouTrack(file) {
+      const rawName = file.name || "";
+      const normalized = normalizeName(rawName);
+      const numbered = rawName.match(/^0?([1-9]|1[0-9]|2[0-5])(?:[_\-\s.]|$)/);
+      if (numbered) {
+        return gentouCatalog[Number(numbered[1]) - 1];
+      }
+      return gentouCatalog.find(track => {
+        const fileKey = normalizeName(track.file);
+        return normalized.includes(fileKey) || track.aliases.some(alias => normalized.includes(normalizeName(alias)));
+      });
+    }
+
+    function renderQueue() {
+      tracksEl.textContent = "";
+      state.tracks.forEach((track, index) => {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `track${index === state.current ? " current" : ""}`;
+        button.addEventListener("click", () => loadTrack(index, true));
+        button.innerHTML = `
+          <span class="track-no">${String(track.no || index + 1).padStart(2, "0")}</span>
+          <span>
+            <span class="track-name"></span>
+            <span class="track-file"></span>
+          </span>
+        `;
+        button.querySelector(".track-name").textContent = track.title;
+        button.querySelector(".track-file").textContent = track.file;
+        item.append(button);
+        tracksEl.append(item);
+      });
+      const total = playlistModes[state.playlistMode].numbers.length;
+      queueCount.textContent = `${state.tracks.length} / ${total}曲`;
+    }
+
+    function applyPlaylistMode(mode = state.playlistMode) {
+      state.playlistMode = playlistModes[mode] ? mode : "all";
+      const allowed = new Set(playlistModes[state.playlistMode].numbers);
+      const previousNo = state.tracks[state.current]?.no;
+      state.tracks = state.library.filter(track => allowed.has(track.no));
+      modeButtons.forEach(button => {
+        button.classList.toggle("active", button.dataset.mode === state.playlistMode);
+      });
+      state.current = Math.max(0, state.tracks.findIndex(track => track.no === previousNo));
+      if (state.current < 0) state.current = 0;
+      state.history = [];
+      saveState();
+      renderQueue();
+    }
+
+    function switchPlaylistMode(mode) {
+      applyPlaylistMode(mode);
+      if (!state.tracks.length) {
+        const label = playlistModes[state.playlistMode].label;
+        setStatus(`${label}に該当する音源がまだ読み込まれていません。ファイルまたはフォルダを選んでください。`);
+        audio.removeAttribute("src");
+        audio.load();
+        titleEl.textContent = playlistModes[state.playlistMode].label;
+        metaEl.textContent = "0曲";
+        return;
+      }
+      loadTrack(0, false);
+    }
+
+    function updateMediaSession(track) {
+      if (!("mediaSession" in navigator)) return;
+      if ("MediaMetadata" in window) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.title,
+          artist: "ヨルシカ",
+          album: "幻燈"
+        });
+      }
+      navigator.mediaSession.setActionHandler("previoustrack", previousTrack);
+      navigator.mediaSession.setActionHandler("nexttrack", () => nextTrack(true));
+      navigator.mediaSession.setActionHandler("play", () => audio.play());
+      navigator.mediaSession.setActionHandler("pause", () => audio.pause());
+    }
+
+    function updatePositionState() {
+      if (!("mediaSession" in navigator) || !("setPositionState" in navigator.mediaSession)) return;
+      if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
+      navigator.mediaSession.setPositionState({
+        duration: audio.duration,
+        playbackRate: audio.playbackRate,
+        position: Math.min(audio.currentTime, audio.duration)
+      });
+    }
+
+    function loadTrack(index, autoplay = false) {
+      if (!state.tracks.length) return;
+      state.current = (index + state.tracks.length) % state.tracks.length;
+      const track = state.tracks[state.current];
+      audio.src = track.src;
+      titleEl.textContent = track.title;
+      metaEl.textContent = `${state.current + 1} / ${state.tracks.length}`;
+      seek.value = 0;
+      updateRangeFill(seek);
+      elapsedEl.textContent = "0:00";
+      durationEl.textContent = "0:00";
+      renderQueue();
+      updateMediaSession(track);
+      saveState();
+      if (autoplay) audio.play().catch(() => {});
+    }
+
+    function nextIndex() {
+      if (!state.shuffle || state.tracks.length < 2) return state.current + 1;
+      let candidate = state.current;
+      while (candidate === state.current) {
+        candidate = Math.floor(Math.random() * state.tracks.length);
+      }
+      state.history.push(state.current);
+      return candidate;
+    }
+
+    function nextTrack(autoplay = true) {
+      loadTrack(nextIndex(), autoplay);
+    }
+
+    function previousTrack() {
+      if (audio.currentTime > 3) {
+        audio.currentTime = 0;
+        return;
+      }
+      if (state.shuffle && state.history.length) {
+        loadTrack(state.history.pop(), true);
+        return;
+      }
+      loadTrack(state.current - 1, true);
+    }
+
+    function updateRepeatButton() {
+      repeatButton.classList.toggle("active", state.repeat !== "off");
+      repeatButton.innerHTML = state.repeat === "one" ? icons.repeatOne : icons.repeat;
+      repeatButton.title = state.repeat === "off" ? "リピート: オフ" : state.repeat === "all" ? "リピート: 全曲" : "リピート: 1曲";
+      repeatButton.setAttribute("aria-label", repeatButton.title);
+    }
+
+    function updateSettingValues() {
+      volumeValue.textContent = `${Math.round(Number(volume.value) * 100)}%`;
+      speedValue.textContent = `${Number(speed.value).toFixed(2)}x`;
+    }
+
+    function tracksFromFiles(files) {
+      const found = new Map();
+      [...files]
+        .filter(file => file.type.startsWith("audio/") || /\.(wav|mp3|m4a|aac|flac|ogg|opus)$/i.test(file.name))
+        .forEach(file => {
+          const matched = matchGentouTrack(file);
+          if (!matched || found.has(matched.no)) return;
+          found.set(matched.no, {
+            ...matched,
+            file: file.webkitRelativePath || file.name,
+            src: URL.createObjectURL(file),
+            index: matched.no - 1,
+            matchedName: file.name
+          });
+        });
+
+      return gentouCatalog
+        .map(track => found.get(track.no))
+        .filter(Boolean);
+    }
+
+    function currentModeMissing() {
+      const allowed = playlistModes[state.playlistMode].numbers;
+      return allowed
+        .filter(no => !state.tracks.some(track => track.no === no))
+        .map(no => gentouCatalog.find(track => track.no === no))
+        .filter(Boolean);
+    }
+
+    async function filesFromDirectoryHandle(handle) {
+      const files = [];
+      for await (const entry of handle.values()) {
+        if (entry.kind === "directory") {
+          files.push(...await filesFromDirectoryHandle(entry));
+          continue;
+        }
+        if (!/\.(wav|mp3|m4a|aac|flac|ogg|opus)$/i.test(entry.name)) continue;
+        files.push(await entry.getFile());
+      }
+      return files;
+    }
+
+    playButton.addEventListener("click", () => {
+      if (audio.paused) audio.play().catch(() => {});
+      else audio.pause();
+    });
+
+    prevButton.addEventListener("click", previousTrack);
+    nextButton.addEventListener("click", () => nextTrack(true));
+
+    shuffleButton.addEventListener("click", () => {
+      state.shuffle = !state.shuffle;
+      shuffleButton.classList.toggle("active", state.shuffle);
+      state.history = [];
+      saveState();
+    });
+
+    repeatButton.addEventListener("click", () => {
+      state.repeat = state.repeat === "off" ? "all" : state.repeat === "all" ? "one" : "off";
+      updateRepeatButton();
+      saveState();
+    });
+
+    modeButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        const mode = button.dataset.mode;
+        switchPlaylistMode(state.playlistMode === mode ? "all" : mode);
+      });
+    });
+
+    volume.addEventListener("input", () => {
+      audio.volume = Number(volume.value);
+      updateSettingValues();
+      updateRangeFill(volume);
+      saveState();
+    });
+
+    speed.addEventListener("input", () => {
+      audio.playbackRate = Number(speed.value);
+      updateSettingValues();
+      updateRangeFill(speed);
+      updatePositionState();
+    });
+
+    seek.addEventListener("input", () => {
+      if (!Number.isFinite(audio.duration)) return;
+      audio.currentTime = (Number(seek.value) / 1000) * audio.duration;
+      updateRangeFill(seek);
+    });
+
+    audio.addEventListener("play", () => {
+      playButton.innerHTML = icons.pause;
+      playButton.setAttribute("aria-label", "一時停止");
+      if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
+    });
+
+    audio.addEventListener("pause", () => {
+      playButton.innerHTML = icons.play;
+      playButton.setAttribute("aria-label", "再生");
+      if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused";
+    });
+
+    audio.addEventListener("loadedmetadata", () => {
+      durationEl.textContent = formatTime(audio.duration);
+      updatePositionState();
+    });
+
+    audio.addEventListener("timeupdate", () => {
+      elapsedEl.textContent = formatTime(audio.currentTime);
+      durationEl.textContent = formatTime(audio.duration);
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        seek.value = String(Math.floor((audio.currentTime / audio.duration) * 1000));
+        updateRangeFill(seek);
+      }
+      updatePositionState();
+    });
+
+    audio.addEventListener("ended", () => {
+      if (state.repeat === "one") {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+        return;
+      }
+      if (state.repeat === "all" || state.current < state.tracks.length - 1 || state.shuffle) {
+        nextTrack(true);
+      }
+    });
+
+    document.querySelector("#chooseFiles").addEventListener("click", () => {
+      fileInput.value = "";
+      fileInput.click();
+    });
+
+    document.querySelector("#chooseFolder").addEventListener("click", async () => {
+      if ("showDirectoryPicker" in window) {
+        try {
+          const handle = await window.showDirectoryPicker();
+          await saveDirectoryHandle(handle).catch(() => {});
+          const files = await filesFromDirectoryHandle(handle);
+          useSelectedFiles(files, "Selected Folder");
+          return;
+        } catch (error) {
+          if (error.name === "AbortError") {
+            setStatus("フォルダ選択をキャンセルしました。");
+            return;
+          }
+          setStatus("フォルダ選択に失敗しました。下のドラッグ&ドロップかファイル選択を試してください。");
+        }
+      }
+      folderInput.value = "";
+      folderInput.click();
+    });
+
+    reloadSavedButton.addEventListener("click", async () => {
+      if (!("showDirectoryPicker" in window)) {
+        setStatus("このブラウザは前回のフォルダ再読込に未対応です。機内モードでも、音源ファイルを選び直せば再生できます。");
+        return;
+      }
+      try {
+        const handle = await loadDirectoryHandle();
+        if (!handle) {
+          setStatus("保存済みのフォルダがありません。先に音源フォルダを選んでください。");
+          return;
+        }
+        if (!(await verifyDirectoryPermission(handle))) {
+          setStatus("前回のフォルダを読む権限がありません。音源フォルダを選び直してください。");
+          return;
+        }
+        const files = await filesFromDirectoryHandle(handle);
+        useSelectedFiles(files, "Saved Folder");
+      } catch {
+        setStatus("前回の場所を再読込できませんでした。音源ファイルを選び直してください。");
+      }
+    });
+
+    function useSelectedFiles(files, label = "Selected Files") {
+      const selected = tracksFromFiles(files);
+      if (!selected.length) {
+        setStatus("幻燈の音源が見つかりませんでした。公式ファイル名のWAVを直接選ぶか、この画面にドラッグ&ドロップしてください。");
+        return;
+      }
+      state.library.forEach(track => {
+        if (track.src.startsWith("blob:")) URL.revokeObjectURL(track.src);
+      });
+      state.library = selected;
+      state.current = 0;
+      state.history = [];
+      modeBadge.textContent = label;
+      applyPlaylistMode(state.playlistMode);
+      const missing = currentModeMissing();
+      const missingText = missing.length ? ` 未検出: ${missing.map(track => track.no).join(", ")}` : " このプレイリストは全曲そろっています。";
+      setStatus(`読み込み済み ${selected.length} / ${gentouCatalog.length}曲。${playlistModes[state.playlistMode].label}: ${state.tracks.length}曲。${missingText}`);
+      if (state.tracks.length) loadTrack(0, false);
+      else {
+        titleEl.textContent = playlistModes[state.playlistMode].label;
+        metaEl.textContent = "0曲";
+        renderQueue();
+      }
+    }
+
+    fileInput.addEventListener("change", event => useSelectedFiles(event.target.files, "Selected Files"));
+    folderInput.addEventListener("change", event => useSelectedFiles(event.target.files, "Selected Folder"));
+
+    dropZone.addEventListener("dragover", event => {
+      event.preventDefault();
+      dropZone.classList.add("dragging");
+    });
+
+    dropZone.addEventListener("dragleave", () => {
+      dropZone.classList.remove("dragging");
+    });
+
+    dropZone.addEventListener("drop", event => {
+      event.preventDefault();
+      dropZone.classList.remove("dragging");
+      useSelectedFiles(event.dataTransfer.files, "Dropped Files");
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.target instanceof HTMLInputElement) return;
+      if (event.code === "Space") {
+        event.preventDefault();
+        playButton.click();
+      }
+      if (event.code === "ArrowRight") nextButton.click();
+      if (event.code === "ArrowLeft") prevButton.click();
+    });
+
+    shuffleButton.classList.toggle("active", state.shuffle);
+    updateRepeatButton();
+    updateSettingValues();
+    updateAllRanges();
+    applyPlaylistMode(state.playlistMode);
+    loadTrack(Math.min(state.current, state.tracks.length - 1), false);
+
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      navigator.serviceWorker.register("sw.js")
+        .then(() => {
+          if (!navigator.onLine) setStatus("オフラインで起動中です。端末内の音源ファイルを選ぶと再生できます。");
+        })
+        .catch(() => {});
+    }
+
+    window.addEventListener("offline", () => {
+      setStatus("オフラインです。アプリ本体はキャッシュ済みなら動作します。端末内の音源を選んでください。");
+    });
+  </script>
+</body>
+</html>

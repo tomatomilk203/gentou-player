@@ -1,0 +1,12 @@
+*.wav
+*.mp3
+*.m4a
+*.aac
+*.flac
+*.ogg
+*.opus
+*.aiff
+*.alac
+*.wma
+start-gentou-player.cmd
+.claude/
